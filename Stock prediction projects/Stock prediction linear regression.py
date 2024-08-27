@@ -7,7 +7,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
 
 # Download historical stock data
-symbol = 'AAPL'  # Example: Apple Inc.
+symbol = 'JPM'  
 data = yf.download(symbol, start='2020-01-01', end=None)  # For the latest data
 
 # Create moving averages as features
@@ -15,7 +15,7 @@ data["MA10"] = data["Close"].rolling(window=10).mean()
 data["MA50"] = data["Close"].rolling(window=50).mean()
 
 # Lag features
-data['Lag1'] = data['Close'].shift(1)
+data["Lag1"] = data["Close"].shift(1)
 data['Lag2'] = data['Close'].shift(2)
 
 # Drop rows with missing values
@@ -25,7 +25,7 @@ data.dropna(inplace=True)
 X = data[['MA10', 'MA50', 'Lag1', 'Lag2']]
 y = data['Close']
 
-# Split the data
+# Split the data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
 # Train the model
@@ -49,6 +49,8 @@ results['Actual'] = y_test
 results['Predicted'] = y_pred
 
 # Create a simple trading strategy based on predictions
+# Buy if the predicted price is higher than today's price
+# Sell if it's lower
 results['Signal'] = np.where(results['Predicted'] > results['Actual'].shift(1), 1, -1)
 
 # Calculate returns
@@ -65,8 +67,21 @@ plt.title('Cumulative Returns')
 plt.legend()
 plt.show()
 
-# Print the last 10 actual and predicted prices
-print(results[['Actual', 'Predicted']].tail(10))
+# View the last 10 rows of actual and predicted prices
+print(results.tail(10))
 
-# Future predictions are not implemented here since the model isn't set up for future dates in this code.
-# To predict future prices, you need to prepare `future_X` (features for future dates) and use the model to predict them.
+# Future predictions (assuming you want to predict the next day's price based on the last available data)
+future_X = X_test.iloc[-1:].copy()
+future_X.index = [X_test.index[-1] + pd.Timedelta(days=1)]
+
+# Predicting future prices
+future_prediction = model.predict(future_X)
+print(f"Future Prediction: {future_prediction[0]}")
+
+# Plotting the actual vs predicted prices
+plt.figure(figsize=(14, 7))
+plt.plot(data.index, data['Close'], label='Actual Price')
+plt.plot(results.index, results['Predicted'], label='Predicted Price')
+plt.title('Actual vs Predicted Prices')
+plt.legend()
+plt.show()
